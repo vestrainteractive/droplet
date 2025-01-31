@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Droplet by Vestra Interactive</title>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+        }
+        header {
+            width: 100%;
+            padding: 10px 20px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+        }
+        header img {
+            width: 24px;
+            height: 24px;
+            margin-right: 10px;
+        }
+        header h1 {
+            font-size: 18px;
+            margin: 0;
+            color: #333;
+        }
+        #upload-container {
+            width: 98vw; /* 98% of viewport width */
+            height: 98vh; /* 98% of viewport height */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border: 4px dashed #ccc;
+            background-color: #fff;
+            cursor: pointer;
+            margin: 0 auto; /* Center the box */
+        }
+        #upload-container.dragover {
+            border-color: #000;
+            background-color: #e0e0e0;
+        }
+        #status-message {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #333;
+        }
+        footer {
+            width: 100%;
+            text-align: center;
+            padding: 10px 0;
+            background-color: #f1f1f1;
+            position: fixed;
+            bottom: 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjMzMzMzMzIj48cGF0aCBkPSJNMTIgMkM2LjQ4IDIgMiA2LjQ4IDIgMTJzNC40OCAxMCAxMCAxMCAxMC00LjQ4IDEwLTEwUzE3LjUyIDIgMTIgMnptMCAxOGMtNC40MSAwLTgtMy41OS04LThzMy41OS04IDgtOCA4IDMuNTkgOCA4LTMuNTkgOC04IDh6Ii8+PHBhdGggZD0iTTEyIDhjLTIuMjEgMC00IDEuNzktNCA0czEuNzkgNCA0IDQgNC0xLjc5IDQtNC0xLjc5LTQtNC00em0wIDZjLTEuMSAwLTItLjktMi0ycy45LTIgMi0yIDIgLjkgMiAyLS45IDItMiAyeiIvPjwvc3ZnPg==" alt="Droplet Icon">
+        <h1>Droplet by Vestra Interactive</h1>
+    </header>
+    <div id="upload-container" title="Drag and drop a file here to upload">
+        <div>↑ Drag and drop a file to upload ↑</div>
+        <div id="status-message"></div>
+    </div>
+    <footer>
+        © <a href="https://vestrainteractive.com" target="_blank">Vestra Interactive</a> - All Rights Reserved
+    </footer>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const uploadContainer = document.getElementById('upload-container');
+            const statusMessage = document.getElementById('status-message');
+
+            uploadContainer.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadContainer.classList.add('dragover');
+            });
+
+            uploadContainer.addEventListener('dragleave', () => {
+                uploadContainer.classList.remove('dragover');
+            });
+
+            uploadContainer.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadContainer.classList.remove('dragover');
+
+                const file = e.dataTransfer.files[0];
+                if (file.size > 20 * 1024 * 1024 * 1024) {
+                    statusMessage.textContent = 'File size exceeds 20GB limit.';
+                    statusMessage.style.color = 'red';
+                    return;
+                }
+
+                statusMessage.textContent = 'Uploading file...';
+                statusMessage.style.color = '#333';
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        statusMessage.textContent = 'File uploaded successfully! Ready for the next file.';
+                        statusMessage.style.color = 'green';
+                    } else {
+                        statusMessage.textContent = data.message || 'File upload failed.';
+                        statusMessage.style.color = 'red';
+                    }
+                })
+                .catch(() => {
+                    statusMessage.textContent = 'File upload failed.';
+                    statusMessage.style.color = 'red';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

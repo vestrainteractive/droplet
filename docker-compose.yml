@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  web:
+    container_name: Droplet File Uploader
+    build: .
+    ports:
+      - "${PORT}:80"
+    volumes:
+      - uploads:/var/html/uploads
+      - /var/lib/clamav:/var/lib/clamav  # Map ClamAV data directory
+    environment:
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_SECURE=${SMTP_SECURE}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - EMAIL_TO=${EMAIL_TO}
+
+volumes:
+  uploads:
