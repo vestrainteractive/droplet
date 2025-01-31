@@ -53,6 +53,20 @@
             font-size: 16px;
             color: #333;
         }
+        #progress-bar-container {
+            width: 80%;
+            height: 20px;
+            background-color: #f1f1f1;
+            border-radius: 10px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        #progress-bar {
+            height: 100%;
+            background-color: #4caf50;
+            width: 0;
+            transition: width 0.3s ease;
+        }
         footer {
             width: 100%;
             text-align: center;
@@ -71,6 +85,9 @@
     <div id="upload-container" title="Drag and drop a file here to upload">
         <div>↑ Drag and drop a file to upload ↑</div>
         <div id="status-message"></div>
+        <div id="progress-bar-container">
+            <div id="progress-bar"></div>
+        </div>
     </div>
     <footer>
         © <a href="https://vestrainteractive.com" target="_blank">Vestra Interactive</a> - All Rights Reserved
@@ -79,6 +96,20 @@
         document.addEventListener('DOMContentLoaded', () => {
             const uploadContainer = document.getElementById('upload-container');
             const statusMessage = document.getElementById('status-message');
+            const progressBar = document.getElementById('progress-bar');
+            let sessionId = null;
+
+            // Start a new session
+            fetch('/start-session', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    sessionId = data.sessionId;
+                    console.log('Session started:', sessionId);
+                })
+                .catch(() => {
+                    statusMessage.textContent = 'Failed to start session.';
+                    statusMessage.style.color = 'red';
+                });
 
             uploadContainer.addEventListener('dragover', (e) => {
                 e.preventDefault();
@@ -102,28 +133,45 @@
 
                 statusMessage.textContent = 'Uploading file...';
                 statusMessage.style.color = '#333';
+                progressBar.style.width = '0%';
 
                 const formData = new FormData();
                 formData.append('file', file);
 
-                fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        statusMessage.textContent = 'File uploaded successfully! Ready for the next file.';
-                        statusMessage.style.color = 'green';
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/upload', true);
+                xhr.setRequestHeader('X-Session-Id', sessionId);
+
+                xhr.upload.onprogress = (event) => {
+                    if (event.lengthComputable) {
+                        const percentComplete = (event.loaded / event.total) * 100;
+                        progressBar.style.width = `${percentComplete}%`;
+                        statusMessage.textContent = `Uploading: ${(event.loaded / (1024 * 1024 * 1024)).toFixed(2)}/${(event.total / (1024 * 1024 * 1024)).toFixed(2)} GB (${percentComplete.toFixed(2)}%)`;
+                    }
+                };
+
+                xhr.onload = () => {
+                    if (xhr.status === 200) {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response.success) {
+                            statusMessage.textContent = 'File uploaded successfully! Ready for the next file.';
+                            statusMessage.style.color = 'green';
+                        } else {
+                            statusMessage.textContent = response.message || 'File upload failed.';
+                            statusMessage.style.color = 'red';
+                        }
                     } else {
-                        statusMessage.textContent = data.message || 'File upload failed.';
+                        statusMessage.textContent = 'File upload failed.';
                         statusMessage.style.color = 'red';
                     }
-                })
-                .catch(() => {
+                };
+
+                xhr.onerror = () => {
                     statusMessage.textContent = 'File upload failed.';
                     statusMessage.style.color = 'red';
-                });
+                };
+
+                xhr.send(formData);
             });
         });
     </script>

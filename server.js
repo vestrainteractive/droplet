@@ -4,6 +4,7 @@ const path = require('path');
 const nodemailer = require('nodemailer');
 const fs = require('fs');
 const { exec } = require('child_process');
+const { v4: uuidv4 } = require('uuid'); // For generating session IDs
 require('dotenv').config();
 
 // Validate required environment variables
@@ -69,6 +70,23 @@ app.use(fileUpload({
 // Serve static files (e.g., index.html)
 app.use(express.static('public'));
 
+// Store session IDs and their upload directories
+const sessions = {};
+
+// Generate a session ID and create a directory for it
+app.post('/start-session', (req, res) => {
+  const sessionId = uuidv4();
+  const sessionDir = path.join(UPLOAD_DIR, sessionId);
+
+  // Create the session directory
+  fs.mkdirSync(sessionDir, { recursive: true });
+
+  // Store the session
+  sessions[sessionId] = { dir: sessionDir };
+
+  res.json({ sessionId });
+});
+
 // File upload endpoint
 app.post('/upload', (req, res) => {
   if (!req.files || Object.keys(req.files).length === 0) {
@@ -76,18 +94,25 @@ app.post('/upload', (req, res) => {
   }
 
   const file = req.files.file;
+  const sessionId = req.headers['x-session-id'];
+
+  if (!sessionId || !sessions[sessionId]) {
+    return res.status(400).json({ success: false, message: 'Invalid session ID.' });
+  }
+
+  const sessionDir = sessions[sessionId].dir;
 
   // Validate file type
   if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
     return res.status(400).json({ success: false, message: 'File type not allowed. Only images, videos, documents, and archives are accepted.' });
   }
 
-  const filePath = path.join(UPLOAD_DIR, file.name);
+  const filePath = path.join(sessionDir, file.name);
 
   // Log the file upload attempt
   console.log(`Attempting to upload file: ${file.name}, size: ${file.size} bytes, type: ${file.mimetype}`);
 
-  // Save the file to the uploads directory
+  // Save the file to the session directory
   file.mv(filePath, (err) => {
     if (err) {
       console.error('File upload failed:', err);
